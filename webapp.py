@@ -55,7 +55,7 @@ def register():
         email = form.email.data
         username = form.username.data
         password = sha256_crypt.encrypt(str(form.password.data))
-        user = Users(name, email, username, password)
+        user = Users(name=name, email=email, username=username, password=password)
         db.session.add(user)
         db.session.commit()
         flash('Congratulations, you are now part of hellgate')
@@ -63,4 +63,5 @@ def register():
     return render_template('register.html', form=form)
 
 if __name__ == '__main__':
+    app.secret_key='topsecrethellgate'
     app.run(debug=True, host='0.0.0.0', port=80)
