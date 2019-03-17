@@ -1,4 +1,5 @@
 import datetime
+import os
 from flask import Flask, render_template, flash, redirect, url_for, session, request, logging
 from data import Articles
 from flask_sqlalchemy import SQLAlchemy
@@ -8,7 +9,9 @@ from wtforms import Form, StringField, TextAreaField, PasswordField, validators
 
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///hgdatabase.db'
+db_path = os.path.join(os.path.dirname(__file__), 'hgdatabase.db')
+db_uri = 'sqlite:///{}'.format(db_path)
+app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
 db = SQLAlchemy(app)
 
 class Users(db.Model):
@@ -64,4 +67,4 @@ def register():
 
 if __name__ == '__main__':
     app.secret_key='topsecrethellgate'
-    app.run(debug=True, host='0.0.0.0', port=80)
+    app.run(debug=True, host='0.0.0.0', port=1400)
