@@ -66,5 +66,5 @@ def register():
     return render_template('register.html', form=form)
 
 if __name__ == '__main__':
-    app.secret_key='topsecrethellgate'
+    app.secret_key=os.environ["hg_secret_flask"]
     app.run(debug=True, host='0.0.0.0', port=1400)
