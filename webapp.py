@@ -65,6 +65,27 @@ def register():
         return redirect(url_for('index'))
     return render_template('register.html', form=form)
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password_candidate = request.form['password']
+        user = Users.query.filter_by(username=username).one()
+        if user:
+            password = user.password
+            if sha256_crypt.verify(password_candidate, password):
+                session['logged_in'] = True
+                session['username'] = username
+            else:
+                error = "Invalid login"
+                return render_template('login.html', error=error)
+        else:
+            error = 'Username not found'
+            return render_template('login.html', error=error)
+
+    return render_template('login.html')
+
+
 if __name__ == '__main__':
     app.secret_key=os.environ["hg_secret_flask"]
     app.run(debug=True, host='0.0.0.0', port=1400)
