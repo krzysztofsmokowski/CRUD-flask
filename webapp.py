@@ -76,12 +76,15 @@ def login():
             if sha256_crypt.verify(password_candidate, password):
                 session['logged_in'] = True
                 session['username'] = username
+                flash("session")
             else:
+                flash("run into else")
                 error = "Invalid login"
-                return render_template('login.html', error=error)
+                #return render_template('login.html', error=error)
         else:
+            flash("another else")
             error = 'Username not found'
-            return render_template('login.html', error=error)
+            #return render_template('login.html', error=error)
 
     return render_template('login.html')
 
