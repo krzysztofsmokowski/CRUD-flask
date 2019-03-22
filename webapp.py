@@ -6,7 +6,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import DateTime
 from passlib.hash import sha256_crypt
 from wtforms import Form, StringField, TextAreaField, PasswordField, validators
-
+from functools import wraps
 
 app = Flask(__name__)
 db_path = os.path.join(os.path.dirname(__file__), 'hgdatabase.db')
@@ -23,8 +23,15 @@ class Users(db.Model):
     password = db.Column(db.String(100))
     register_date = db.Column(DateTime, default=datetime.datetime.utcnow)
 
+class Articles(db.Model):
+    __tablename__ = 'articles'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255))
+    author = db.Column(db.String(100))
+    body = db.Column(db.String())
+    created_date = db.Column(DateTime, default=datetime.datetime.utcnow)
+
 db.create_all()
-Articles = Articles()
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -35,11 +42,28 @@ def about():
 
 @app.route('/articles')
 def articles():
-    return render_template('articles.html', articles=Articles)
+    get_all = Articles.query.all()
+    if get_all:
+        return render_template('articles.html', articles=get_all)
+    else:
+        msg = 'No articles found'
+        return render_template('articles.html', msg=msg)
+
 
 @app.route('/article/<string:id>/')
 def article(id):
-    return render_template('article.html', id=id)
+    get_article = Articles.query.filter_by(id=id).first()
+    return render_template('article.html', article=get_article)
+
+def logged_wrapper(f):
+    @wraps(f)
+    def wrap(*args, **kwargs):
+        if 'logged_in' in session:
+            return f(*args, **kwargs)
+        else:
+            flash('Unauthorized, log in', 'danger')
+            return redirect(url_for('login'))
+    return wrap
 
 class RegisterForm(Form):
     name = StringField('Name', [validators.Length(min=1, max=40)])
@@ -49,6 +73,11 @@ class RegisterForm(Form):
         validators.DataRequired(),
         validators.EqualTo('confirm', message='Passwords do not match')])
     confirm = PasswordField('Confirm Password')
+
+class ArticleForm(Form):
+    title = StringField('Title', [validators.Length(min=1, max=200)])
+    body = TextAreaField('Body', [validators.Length(min=30)])
+
 
 @app.route('/register', methods=['GET' ,'POST'])
 def register():
@@ -70,24 +99,78 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password_candidate = request.form['password']
-        user = Users.query.filter_by(username=username).one()
+        user = Users.query.filter_by(username=username).first()
         if user:
             password = user.password
             if sha256_crypt.verify(password_candidate, password):
                 session['logged_in'] = True
                 session['username'] = username
-                flash("session")
+                flash('You are now logged in', 'success')
+                return redirect(url_for('dashboard'))
             else:
-                flash("run into else")
-                error = "Invalid login"
-                #return render_template('login.html', error=error)
+                error = "Invalid password"
+                return render_template('login.html', error=error)
         else:
-            flash("another else")
-            error = 'Username not found'
-            #return render_template('login.html', error=error)
-
+            error = "Invalid username"
+            return render_template('login.html', error=error)
     return render_template('login.html')
 
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('You are now logged out', 'success')
+    return redirect(url_for('login'))
+
+@app.route('/dashboard')
+@logged_wrapper
+def dashboard():
+    get_all = Articles.query.all()
+    if get_all:
+        return render_template('dashboard.html', articles=get_all)
+    else:
+        msg = 'No articles found'
+        return render_template('dashboard.html', msg=msg)
+
+@app.route('/add_article', methods =['GET', 'POST'])
+@logged_wrapper
+def add_article():
+    form = ArticleForm(request.form)
+    if request.method == 'POST' and form.validate():
+        title = form.title.data
+        body = form.body.data
+        article = Articles(title=title, body=body, author=session['username'])
+        db.session.add(article)
+        db.session.commit()
+        db.session.close()
+        flash('Succesfully added article', 'success')
+        return redirect(url_for('dashboard'))
+    return render_template('add_article.html', form=form)
+
+@app.route('/edit_article/<string:id>', methods=["GET", "POST"])
+@logged_wrapper
+def edit_article(id):
+    art = Articles.query.filter_by(id=id).one()
+    form = ArticleForm(request.form)
+    form.title.data = art.title
+    form.body.data = art.body
+    if request.method == "POST" and form.validate():
+        title = request.form['title']
+        body = request.form['body']
+        art.body = body
+        art.title = title
+        db.session.commit()
+        db.session.close()
+        return redirect(url_for('dashboard'))
+    return render_template('edit_article.html', form=form)
+
+@app.route('/delete_article/<string:id>', methods=['POST'])
+@logged_wrapper
+def delete_article(id):
+    art = Articles.query.filter_by(id=id).one()
+    db.session.delete(art)
+    db.session.commit()
+    flash('deleted', 'success')
+    return redirect(url_for('dashboard'))
 
 if __name__ == '__main__':
     app.secret_key=os.environ["hg_secret_flask"]
