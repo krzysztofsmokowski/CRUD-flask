@@ -23,10 +23,12 @@ class Users(db.Model):
     password = db.Column(db.String(100))
     register_date = db.Column(DateTime, default=datetime.datetime.utcnow)
 
+
 class Articles(db.Model):
     __tablename__ = 'articles'
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255))
+    user = db.Column(db.Integer, db.ForeignKey("users.id"))
     author = db.Column(db.String(100))
     body = db.Column(db.String())
     created_date = db.Column(DateTime, default=datetime.datetime.utcnow)
@@ -102,9 +104,11 @@ def login():
         user = Users.query.filter_by(username=username).first()
         if user:
             password = user.password
+            identification = user.id
             if sha256_crypt.verify(password_candidate, password):
                 session['logged_in'] = True
                 session['username'] = username
+                session['id'] = identification
                 flash('You are now logged in', 'success')
                 return redirect(url_for('dashboard'))
             else:
@@ -124,7 +128,9 @@ def logout():
 @app.route('/dashboard')
 @logged_wrapper
 def dashboard():
-    get_all = Articles.query.all()
+    flash(Articles.query.filter_by(user=Users.id).all())
+    flash(session["id"])
+    get_all = Articles.query.filter_by(user=session["id"])
     if get_all:
         return render_template('dashboard.html', articles=get_all)
     else:
