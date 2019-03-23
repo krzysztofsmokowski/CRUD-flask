@@ -128,8 +128,6 @@ def logout():
 @app.route('/dashboard')
 @logged_wrapper
 def dashboard():
-    flash(Articles.query.filter_by(user=Users.id).all())
-    flash(session["id"])
     get_all = Articles.query.filter_by(user=session["id"])
     if get_all:
         return render_template('dashboard.html', articles=get_all)
@@ -144,7 +142,7 @@ def add_article():
     if request.method == 'POST' and form.validate():
         title = form.title.data
         body = form.body.data
-        article = Articles(title=title, body=body, author=session['username'])
+        article = Articles(title=title, body=body, author=session['username'], user=session['id'])
         db.session.add(article)
         db.session.commit()
         db.session.close()
