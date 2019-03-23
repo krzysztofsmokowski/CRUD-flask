@@ -7,6 +7,7 @@ from sqlalchemy import DateTime
 from passlib.hash import sha256_crypt
 from wtforms import Form, StringField, TextAreaField, PasswordField, validators
 from functools import wraps
+from wtforms.fields.html5 import EmailField
 
 app = Flask(__name__)
 db_path = os.path.join(os.path.dirname(__file__), 'hgdatabase.db')
@@ -68,9 +69,13 @@ def logged_wrapper(f):
     return wrap
 
 class RegisterForm(Form):
-    name = StringField('Name', [validators.Length(min=1, max=40)])
-    username = StringField('Username', [validators.Length(min=4, max=25)])
-    email = StringField('Email', [validators.Length(min=6, max=50)])
+    name = StringField('Name', [validators.Length(min=1, max=40),
+        validators.DataRequired()])
+    username = StringField('Username', [validators.Length(min=4, max=25),
+        validators.DataRequired()])
+    email = EmailField('Email', [validators.Length(min=6, max=50),
+        validators.Email(),
+        validators.DataRequired()])
     password = PasswordField('Password', [
         validators.DataRequired(),
         validators.EqualTo('confirm', message='Passwords do not match')])
@@ -128,7 +133,7 @@ def logout():
 @app.route('/dashboard')
 @logged_wrapper
 def dashboard():
-    get_all = Articles.query.filter_by(user=session["id"])
+    get_all = Articles.query.filter_by(user=session['id'])
     if get_all:
         return render_template('dashboard.html', articles=get_all)
     else:
