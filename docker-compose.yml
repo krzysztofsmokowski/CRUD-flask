@@ -1,0 +1,7 @@
+version: '2'
+
+services:
+  flask_cwiczenie:
+    build: .
+    ports:
+        - "80:80"
